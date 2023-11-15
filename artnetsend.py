@@ -420,16 +420,16 @@ def main():
     global PRINTCHAR
 
     parser = argparse.ArgumentParser(
-                    prog='arnetplay',
+                    prog='arnetplay.py',
                     description='Send raw images using Artnet protocol',
                     epilog='Made with \u2665 in Python')
     
     parser.add_argument('-v','--verbose',action='count',default=0,help='Verbose level')
-    parser.add_argument('-d','--destination',default='127.0.0.1',help='IP destination address')
-    parser.add_argument('-p','--port',type=int,default=6454,help='UDP destination port')
-    parser.add_argument('-f','--fps',type=int,default=5,help='Frame Per Second')
-    parser.add_argument('-r','--repeat',type=int,default=0,help='UDP packet repeat')
-    parser.add_argument('-l','--loop',type=int,default=0,help='Number of loop to play')
+    parser.add_argument('-d','--destination',default='127.0.0.1',help='IP destination address (default 127.0.0.1)')
+    parser.add_argument('-p','--port',type=int,default=6454,help='UDP destination port (default 6454)')
+    parser.add_argument('-f','--fps',type=int,default=5,help='Frame Per Second (default 5)')
+    parser.add_argument('-r','--repeat',type=int,default=0,help='UDP packet repeat (default none)')
+    parser.add_argument('-l','--loop',type=int,default=0,help='Number of loop to play (infinite loop by default)')
     parser.add_argument('-s','--show',action='count',default=0,help='Show frames')
     parser.add_argument('-b','--box',action='count',default=0,help='Use boxes instead of dots when showing frames')
     parser.add_argument('filepath',nargs='+',help='Raw image (rgb24) filepath')
