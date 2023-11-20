@@ -4,7 +4,7 @@ from struct import pack, unpack     # Usefull to play with bytes
 import socket                       # UDP
 import time                         # sleep function
 from datetime import datetime       # get the current time (FPS calculation)
-from sys import stdout              # for the spining indicator
+from sys import stdout, stderr      # for the spining indicator
 import argparse                     # for the command line arguments
 
 # For rgb to xterm256 color matching:
@@ -29,6 +29,9 @@ INDICATOR = '/-\|'          # spining indicator chars
 BOX = '\u2586\u2586 '       # LOWER THREE QUARTERS BLOCK, LOWER THREE QUARTERS BLOCK, SPACE
 DOT = '\u2b24 '             # BLACK LARGE CIRCLE, SPACE
 PRINTCHAR = DOT             # By default use dot
+PRINTCHAR = DOT             # By default use dot
+ERASE_LINE = '\x1b[2K'      # Erase content of a line
+CURSOR_UP_ONE = '\x1b[1A'   # Go to upper line
 
 XTERM256RGB = [ # xterm256 color look-up table (xterm256 index to RGB24)
                 # Primary 3-bit (8 colors).
@@ -315,14 +318,34 @@ XTERM256LAB = list( map(lambda rgb: rgb2lab(rgb),
 # Already calculated correspondance look-up hashtable
 FAST_RGB2XTERM256 = dict()  
 
-def distance(xyz1,xyz2):
-    # Calculate the distance between two xyz coordinates
+def distance_euclidean(xyz1,xyz2):
+    # Calculate the Euclidean distance between two 
+    # xyz coordinates
     # input: pair of (x,y,z) tuples
     # output: distance
 
     return math.sqrt(   math.pow((xyz1[0]-xyz2[0]),2) +
                         math.pow((xyz1[1]-xyz2[1]),2) +
                         math.pow((xyz1[2]-xyz2[2]),2))
+
+def distance_manhattan(xyz1,xyz2):
+    # Calculate the Manhattan distance between two 
+    # xyz coordinates.
+    # It should be faster than Euclidean and still
+    # enough acurate for this usecase
+    # input: pair of (x,y,z) tuples
+    # output: distance
+
+    return (    abs(xyz1[0]-xyz2[0]) +
+                abs(xyz1[1]-xyz2[1]) +
+                abs(xyz1[2]-xyz2[2]))
+
+def distance(xyz1,xyz2):
+    # Calculate the distance between two 
+    # xyz coordinates (default method)
+    # input: pair of (x,y,z) tuples
+    # output: distance
+    return distance_manhattan(xyz1,xyz2)
 
 def rgb2xterm256_lab(r,g,b):
     # Find best matching xterm256 color using distance in lab representation
@@ -373,17 +396,17 @@ def rgb2xterm256_lab(r,g,b):
 def verbose_1(msg):
     # Verbose level 1 printing
     if VERBOSE > 0:
-        print('\033[38;5;230m' + msg)
+        stderr.write('\033[38;5;230m\n' + msg)
 
 def verbose_2(msg):
     # Verbose level 2 printing
     if VERBOSE > 1:
-        print('\033[38;5;230m' + msg)
+        stderr.write('\033[38;5;230m\n' + msg)
 
 def verbose_3(msg):
     # Verbose level 3 printing
     if VERBOSE > 2:
-        print('\033[38;5;230m' + msg)
+        stderr.write('\033[38;5;230m\n' + msg)
 
 def frame2ascii(frame,width=0,height=0):
     # Convert a frame to ascii printable text
@@ -426,7 +449,7 @@ def main():
                     description='Send raw images using Artnet protocol',
                     epilog='Made with \u2665 in Python')
     
-    parser.add_argument('-v','--verbose',action='count',default=0,help='Verbose level')
+    parser.add_argument('-v','--verbose',action='count',default=0,help='Verbose level (on stderr)')
     parser.add_argument('-W','--width',type=int,default=16,help='Frame width in pixels')
     parser.add_argument('-H','--height',type=int,default=16,help='Frame height in pixels')
     parser.add_argument('-d','--destination',default='127.0.0.1',help='IP destination address (default 127.0.0.1)')
@@ -434,7 +457,7 @@ def main():
     parser.add_argument('-f','--fps',type=int,default=5,help='Frame Per Second (default 5)')
     parser.add_argument('-r','--repeat',type=int,default=0,help='UDP packet repeat (default none)')
     parser.add_argument('-L','--loop',type=int,default=0,help='Number of loop to play (infinite loop by default)')
-    parser.add_argument('-s','--show',action='count',default=0,help='Show frames')
+    parser.add_argument('-s','--show',action='count',default=0,help='Show frames (on stdout)')
     parser.add_argument('-b','--box',action='count',default=0,help='Use boxes instead of dots when showing frames')
     parser.add_argument('filepath',nargs='+',help='Raw image (rgb24) filepath')
 
@@ -467,6 +490,9 @@ def main():
             # Also compute ascii frame if needed
             if args.show > 0:
                 asciiframes.append(frame2ascii(frame,args.width,args.height))
+
+    # Precompute erase frame pattern
+    erase_frame  = (CURSOR_UP_ONE + ERASE_LINE) * args.height
 
     # First frame will use sequence 0
     sequence = 0
@@ -502,7 +528,9 @@ def main():
 
             verbose_1('* Processing frame %d, %d bytes to send' % (f, remaining_bytes))
             if args.show > 0:
-                print(asciiframes[f])
+                stdout.write(erase_frame)
+                stdout.write(frame2ascii(frames[f],args.width,args.height))
+                stdout.flush()
 
             # While data needs to be sent for the current frame
             while remaining_bytes > 0:

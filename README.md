@@ -22,7 +22,7 @@ The file size of the raw rgb24 image should be `width x height x 3` bytes. As an
 
     options:
     -h, --help            show this help message and exit
-    -v, --verbose         Verbose level
+    -v, --verbose         Verbose level (on stderr)
     -W WIDTH, --width WIDTH
                             Frame width in pixels
     -H HEIGHT, --height HEIGHT
@@ -34,8 +34,10 @@ The file size of the raw rgb24 image should be `width x height x 3` bytes. As an
     -r REPEAT, --repeat REPEAT
                             UDP packet repeat (default none)
     -L LOOP, --loop LOOP  Number of loop to play (infinite loop by default)
-    -s, --show            Show frames
+    -s, --show            Show frames (on stdout)
     -b, --box             Use boxes instead of dots when showing frames
+
+    Made with ♥ in Python
 
 ### show with dots
 
@@ -78,13 +80,13 @@ I've noticed that raw images file extension must be `.data` to be open in GIMP 2
 ## usage
 
     ./artnetrelay.py -h
-    usage: arnetrelay.py [-h] [-v] [-W WIDTH] [-H HEIGHT] [-d DESTINATION] [-p PORT] [-l LISTEN_PORT] [-r REPEAT] [-L LOOP] [-s] [-b]
+    usage: arnetrelay.py [-h] [-v] [-W WIDTH] [-H HEIGHT] [-d DESTINATION] [-p PORT] [-l LISTEN_PORT] [-r REPEAT] [-f FRAMES] [-s] [-b]
 
     Forward raw frames (eg. ffmpeg rawvideo/UDP) using Artnet protocol
 
     options:
     -h, --help            show this help message and exit
-    -v, --verbose         Verbose level
+    -v, --verbose         Verbose level (on stderr)
     -W WIDTH, --width WIDTH
                             Frame width in pixels
     -H HEIGHT, --height HEIGHT
@@ -96,8 +98,9 @@ I've noticed that raw images file extension must be `.data` to be open in GIMP 2
                             UDP listen port (default 1234)
     -r REPEAT, --repeat REPEAT
                             UDP packet repeat (default none)
-    -L LOOP, --loop LOOP  Number of loop to play (infinite loop by default)
-    -s, --show            Show frames
+    -f FRAMES, --frames FRAMES
+                            Number of frames to forward before exit (infinite by default)
+    -s, --show            Show frames (on stdout)
     -b, --box             Use boxes instead of dots when showing frames
 
     Made with ♥ in Python
