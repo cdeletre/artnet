@@ -427,12 +427,9 @@ def main():
     parser.add_argument('-v','--verbose',action='count',default=0,help='Verbose level')
     parser.add_argument('-d','--destination',default='127.0.0.1',help='IP destination address (default 127.0.0.1)')
     parser.add_argument('-p','--port',type=int,default=6454,help='UDP destination port (default 6454)')
-    parser.add_argument('-f','--fps',type=int,default=5,help='Frame Per Second (default 5)')
     parser.add_argument('-r','--repeat',type=int,default=0,help='UDP packet repeat (default none)')
-    parser.add_argument('-l','--loop',type=int,default=0,help='Number of loop to play (infinite loop by default)')
     parser.add_argument('-s','--show',action='count',default=0,help='Show frames')
     parser.add_argument('-b','--box',action='count',default=0,help='Use boxes instead of dots when showing frames')
-    parser.add_argument('filepath',nargs='+',help='Raw image (rgb24) filepath')
 
     args = parser.parse_args()
 
@@ -441,28 +438,17 @@ def main():
     if args.box > 0:
         PRINTCHAR = BOX
 
-    # Open UDP socket
+    # Open UDP socket for sending Artnet data
     udpclient = socket.socket(socket.AF_INET, socket.SOCK_DGRAM)      # UDP
+
+    # Open UDP socket for receiving raw data
+    udpserver = socket.socket(socket.AF_INET, socket.SOCK_DGRAM)      # UDP
+    ## udpserver.settimeout(None)
 
     if int(args.destination.split('.')[3]) == 255:
         udpclient.setsockopt(socket.SOL_SOCKET, socket.SO_BROADCAST, 1)   # Allow multicast
 
-    # load frames from files
-    frames = []
-    asciiframes = []
-
-    for filepath in args.filepath:
-        with open(filepath,'rb') as file:
-            
-            # Load file content
-            frame = file.read()
-
-            # Append file content to frames table
-            frames.append(frame)
-
-            # Also compute ascii frame if needed
-            if args.show > 0:
-                asciiframes.append(frame2ascii(frame))
+    udpserver.bind(('127.0.0.1', 1234))
 
     # First frame will use sequence 0
     sequence = 0
@@ -480,86 +466,68 @@ def main():
 
         loop -= 1   # with loop set to 0 from start it results in infinite loop
 
-        # For each frame loaded in the frames table
-        for f in range(len(frames)):
+        if VERBOSE == 0 and args.show == 0:
+            stdout.write('\rSending frames %s' % INDICATOR[i  % len(INDICATOR)])
 
-            # Store start time (used for FPS)
-            start = datetime.now()
+        i = (i + 1)
+        frame = udpserver.recvfrom(768)[0]
 
-            if VERBOSE == 0 and args.show == 0:
-                stdout.write('\rSending frames %s' % INDICATOR[i])
-                i = (i + 1) % len(INDICATOR)
+        # First Artnet payload for a frame is in universe 0
+        universe = 0
+        
+        # Get the frame size
+        remaining_bytes = len(frame)
 
-            # First Artnet payload for a frame is in universe 0
-            universe = 0
-            
-            # Get the frame size
-            remaining_bytes = len(frames[f])
+        verbose_1('* Processing frame %d, %d bytes to send' % (i, remaining_bytes))
+        if args.show > 0:
+            print(frame2ascii(frame))
 
-            verbose_1('* Processing frame %d, %d bytes to send' % (f, remaining_bytes))
-            if args.show > 0:
-                print(asciiframes[f])
+        # While data needs to be sent for the current frame
+        while remaining_bytes > 0:
 
-            # While data needs to be sent for the current frame
-            while remaining_bytes > 0:
+            verbose_1('+' + '-' * 79)
+            verbose_2('+ %d bytes remaining to send' % remaining_bytes)
 
-                verbose_1('+' + '-' * 79)
-                verbose_2('+ %d bytes remaining to send' % remaining_bytes)
+            # Prepare up to 170 RGB values to send (510 bytes, maximum in DMX512)
+            index = universe * 510
+            rgbvalues = frame[index: index + 510]
+        
+            # Build the artnet payload
+            data = ARTNET_DESCRIPTOR_HEADER                     # Pack header first
+            data += pack('>B',sequence)                         # Pack the sequence index
+            data += pack('>B',ARTNET_PHYSICAL)                  # Pack the artnet physical
+            data += pack('<H',universe)                         # Pack the universe index
+            data += pack('>H',len(rgbvalues))                   # Pack the artnet payload length
+            data += pack('>%sB' % len(rgbvalues), *rgbvalues)   # Pack the payload
 
-                # Prepare up to 170 RGB values to send (510 bytes, maximum in DMX512)
-                index = universe * 510
-                rgbvalues = frames[f][index: index + 510]
-            
-                # Build the artnet payload
-                data = ARTNET_DESCRIPTOR_HEADER                     # Pack header first
-                data += pack('>B',sequence)                         # Pack the sequence index
-                data += pack('>B',ARTNET_PHYSICAL)                  # Pack the artnet physical
-                data += pack('<H',universe)                         # Pack the universe index
-                data += pack('>H',len(rgbvalues))                   # Pack the artnet payload length
-                data += pack('>%sB' % len(rgbvalues), *rgbvalues)   # Pack the payload
+            verbose_1('+ Sequence: %d, universe: %d, DMX: %d bytes, UDP payload: %d bytes' % (sequence,universe,len(rgbvalues),len(data)))
+            verbose_3('-----BEGIN PAYLOAD-----')
+            verbose_3(data.hex())
+            verbose_3('-----END PAYLOAD-----')
+            verbose_2('+ Sending UDP packet with %d bytes' % len(data))
 
-                verbose_1('+ Sequence: %d, universe: %d, DMX: %d bytes, UDP payload: %d bytes' % (sequence,universe,len(rgbvalues),len(data)))
-                verbose_3('-----BEGIN PAYLOAD-----')
-                verbose_3(data.hex())
-                verbose_3('-----END PAYLOAD-----')
-                verbose_2('+ Sending UDP packet with %d bytes' % len(data))
+            # Send the artnet data in UDP packet
+            udpclient.sendto(data,(args.destination,args.port))
 
-                # Send the artnet data in UDP packet
+            # When requested resend the UDP packet
+            # May be usefull in case of bad network quality
+            for repeat in range(args.repeat):
+                verbose_2('+ Sending again UDP packet (repeat %d)' % repeat)
                 udpclient.sendto(data,(args.destination,args.port))
 
-                # When requested resend the UDP packet
-                # May be usefull in case of bad network quality
-                for repeat in range(args.repeat):
-                    verbose_2('+ Sending again UDP packet (repeat %d)' % repeat)
-                    udpclient.sendto(data,(args.destination,args.port))
+            # Increment universe index for the remaining bytes to be send in other
+            # Artnet packet with the same sequence index
+            universe = (universe + 1) % 65536
 
-                # Increment universe index for the remaining bytes to be send in other
-                # Artnet packet with the same sequence index
-                universe = (universe + 1) % 65536
+            # Calculate the remaining bytes to send
+            remaining_bytes -= 510
+        
+        verbose_1('+' + '-' * 79)
 
-                # Calculate the remaining bytes to send
-                remaining_bytes -= 510
-            
-            verbose_1('+' + '-' * 79)
-
-            # Increment sequence index for next frame
-            sequence = (sequence + 1) % 256
-
-            # Evaluate the elapsed time since the computing has started
-            # for the current frame
-            duration = (datetime.now() - start).microseconds/1000000
-
-            verbose_2('+ Processing frame %d took %f seconds' % (f,duration))
-
-            # Calculate the wait time needed to achieve the requested FPS
-            wait = 1/int(args.fps) - duration
-            verbose_2('+ Will wait %f seconds' % wait)
-
-            # If we're not to late we will need to wait
-            if wait > 0:
-                time.sleep(wait)
-            
-            verbose_1('=' * 80)
+        # Increment sequence index for next frame
+        sequence = (sequence + 1) % 256
+        
+        verbose_1('=' * 80)
 
         # Stop when the number of loop has been done 
         # Note: infinite loop will never branch in here (loop < 0)
