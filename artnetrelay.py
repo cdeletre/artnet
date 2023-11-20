@@ -453,7 +453,7 @@ def main():
     parser.add_argument('-p','--port',type=int,default=6454,help='UDP destination port (default 6454)')
     parser.add_argument('-l','--listen-port',type=int,default=1234,help='UDP listen port (default 1234)')
     parser.add_argument('-r','--repeat',type=int,default=0,help='UDP packet repeat (default none)')
-    parser.add_argument('-f','--frames',type=int,default=0,help='Number of frames to forward before exit (infinite by default)')
+    parser.add_argument('-F','--frames',type=int,default=0,help='Number of frames to forward before exit (infinite by default)')
     parser.add_argument('-s','--show',action='count',default=0,help='Show frames (on stdout)')
     parser.add_argument('-b','--box',action='count',default=0,help='Use boxes instead of dots when showing frames')
 

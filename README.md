@@ -98,7 +98,7 @@ I've noticed that raw images file extension must be `.data` to be open in GIMP 2
                             UDP listen port (default 1234)
     -r REPEAT, --repeat REPEAT
                             UDP packet repeat (default none)
-    -f FRAMES, --frames FRAMES
+    -F FRAMES, --frames FRAMES
                             Number of frames to forward before exit (infinite by default)
     -s, --show            Show frames (on stdout)
     -b, --box             Use boxes instead of dots when showing frames
