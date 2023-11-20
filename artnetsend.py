@@ -448,7 +448,7 @@ def main():
     # Open UDP socket
     udpclient = socket.socket(socket.AF_INET, socket.SOCK_DGRAM)      # UDP
 
-    if int(args.destination.split('.')[3]) == 255:
+    if len(args.destination.split('.')) == 4 and int(args.destination.split('.')[3]) == 255:
         udpclient.setsockopt(socket.SOL_SOCKET, socket.SO_BROADCAST, 1)   # Allow multicast
 
     # load frames from files
