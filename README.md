@@ -71,7 +71,7 @@ The file size of the raw rgb24 image should be `width x height x 3` bytes. As an
 
 I've noticed that raw images file extension must be `.data` to be open in GIMP 2.10 with the appropriate loader.
 
-## artnetsend.py
+## artnetrelay.py
 
 `artnetrelay.py` is a tool that receives raw rgb24 frames (eg. rawvideo from ffmpeg) and forward them raw using [Artnet protocol](https://en.wikipedia.org/wiki/Art-Net) to compatible endpoints such as [WLED](https://kno.wled.ge/).
 
