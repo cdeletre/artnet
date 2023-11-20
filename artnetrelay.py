@@ -2,8 +2,6 @@
 
 from struct import pack, unpack     # Usefull to play with bytes
 import socket                       # UDP
-import time                         # sleep function
-from datetime import datetime       # get the current time (FPS calculation)
 from sys import stdout              # for the spining indicator
 import argparse                     # for the command line arguments
 
@@ -385,21 +383,23 @@ def verbose_3(msg):
     if VERBOSE > 2:
         print('\033[38;5;230m' + msg)
 
-def frame2ascii(frame):
+def frame2ascii(frame,width=0,height=0):
     # Convert a frame to ascii printable text
     # input: frame as raw rgb pixel values
     # ouput: the frame as printable colored text
 
     ascii = ''
-    size = int(math.sqrt(len(frame)/3))     # we assume it is a square
+    if width == 0 or height ==0:
+        width = int(math.sqrt(len(frame)/3))     # we assume it is a square
+        height = width
     
     # For each frame line
-    for y in range(size):
+    for y in range(height):
         # For each column
-        for x in range(size):
+        for x in range(width):
 
             # Calculate the current rgb triplet pointer
-            index = y*3*size + 3*x
+            index = y*3*width + 3*x
             # Get the r,g,b values
             r = int(frame[ index ])
             g = int(frame[ index + 1 ])
@@ -420,14 +420,18 @@ def main():
     global PRINTCHAR
 
     parser = argparse.ArgumentParser(
-                    prog='arnetplay.py',
-                    description='Send raw images using Artnet protocol',
+                    prog='arnetrelay.py',
+                    description='Forward raw frames (eg. ffmpeg rawvideo/UDP) using Artnet protocol',
                     epilog='Made with \u2665 in Python')
     
     parser.add_argument('-v','--verbose',action='count',default=0,help='Verbose level')
+    parser.add_argument('-W','--width',type=int,default=16,help='Frame width in pixels')
+    parser.add_argument('-H','--height',type=int,default=16,help='Frame height in pixels')
     parser.add_argument('-d','--destination',default='127.0.0.1',help='IP destination address (default 127.0.0.1)')
     parser.add_argument('-p','--port',type=int,default=6454,help='UDP destination port (default 6454)')
+    parser.add_argument('-l','--listen-port',type=int,default=1234,help='UDP listen port (default 1234)')
     parser.add_argument('-r','--repeat',type=int,default=0,help='UDP packet repeat (default none)')
+    parser.add_argument('-L','--loop',type=int,default=0,help='Number of loop to play (infinite loop by default)')
     parser.add_argument('-s','--show',action='count',default=0,help='Show frames')
     parser.add_argument('-b','--box',action='count',default=0,help='Use boxes instead of dots when showing frames')
 
@@ -441,14 +445,16 @@ def main():
     # Open UDP socket for sending Artnet data
     udpclient = socket.socket(socket.AF_INET, socket.SOCK_DGRAM)      # UDP
 
-    # Open UDP socket for receiving raw data
-    udpserver = socket.socket(socket.AF_INET, socket.SOCK_DGRAM)      # UDP
-    ## udpserver.settimeout(None)
-
     if int(args.destination.split('.')[3]) == 255:
         udpclient.setsockopt(socket.SOL_SOCKET, socket.SO_BROADCAST, 1)   # Allow multicast
 
-    udpserver.bind(('127.0.0.1', 1234))
+    # Open UDP socket for receiving raw data
+    udpserver = socket.socket(socket.AF_INET, socket.SOCK_DGRAM)      # UDP
+
+    ## udpserver.settimeout(None)
+    udpserver.bind(('127.0.0.1', args.listen_port))
+
+    framesize = args.width * args.height * 3
 
     # First frame will use sequence 0
     sequence = 0
@@ -470,7 +476,17 @@ def main():
             stdout.write('\rSending frames %s' % INDICATOR[i  % len(INDICATOR)])
 
         i = (i + 1)
-        frame = udpserver.recvfrom(768)[0]
+        frame = b''
+
+        # Receive all the udp payload for the current frame
+        # UDP is not reliable so it should only works on localhost
+        # In the case the video must be received over the network
+        # you should move the artnetrelay node so that artnet protocol
+        # is used over the network or you may use an ffmpeg chaining
+        # like this:
+        # ffmpeg -> RTP or MPEGTS over network -> ffmpeg -> UDP raw
+        while len(frame) < framesize:
+            frame += udpserver.recvfrom(1500)[0]
 
         # First Artnet payload for a frame is in universe 0
         universe = 0
@@ -480,7 +496,7 @@ def main():
 
         verbose_1('* Processing frame %d, %d bytes to send' % (i, remaining_bytes))
         if args.show > 0:
-            print(frame2ascii(frame))
+            print(frame2ascii(frame,args.width,args.height))
 
         # While data needs to be sent for the current frame
         while remaining_bytes > 0:

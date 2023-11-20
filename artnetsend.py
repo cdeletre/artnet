@@ -385,21 +385,23 @@ def verbose_3(msg):
     if VERBOSE > 2:
         print('\033[38;5;230m' + msg)
 
-def frame2ascii(frame):
+def frame2ascii(frame,width=0,height=0):
     # Convert a frame to ascii printable text
     # input: frame as raw rgb pixel values
     # ouput: the frame as printable colored text
 
     ascii = ''
-    size = int(math.sqrt(len(frame)/3))     # we assume it is a square
+    if width == 0 or height ==0:
+        width = int(math.sqrt(len(frame)/3))     # we assume it is a square
+        height = width
     
     # For each frame line
-    for y in range(size):
+    for y in range(height):
         # For each column
-        for x in range(size):
+        for x in range(width):
 
             # Calculate the current rgb triplet pointer
-            index = y*3*size + 3*x
+            index = y*3*width + 3*x
             # Get the r,g,b values
             r = int(frame[ index ])
             g = int(frame[ index + 1 ])
@@ -425,11 +427,13 @@ def main():
                     epilog='Made with \u2665 in Python')
     
     parser.add_argument('-v','--verbose',action='count',default=0,help='Verbose level')
+    parser.add_argument('-W','--width',type=int,default=16,help='Frame width in pixels')
+    parser.add_argument('-H','--height',type=int,default=16,help='Frame height in pixels')
     parser.add_argument('-d','--destination',default='127.0.0.1',help='IP destination address (default 127.0.0.1)')
     parser.add_argument('-p','--port',type=int,default=6454,help='UDP destination port (default 6454)')
     parser.add_argument('-f','--fps',type=int,default=5,help='Frame Per Second (default 5)')
     parser.add_argument('-r','--repeat',type=int,default=0,help='UDP packet repeat (default none)')
-    parser.add_argument('-l','--loop',type=int,default=0,help='Number of loop to play (infinite loop by default)')
+    parser.add_argument('-L','--loop',type=int,default=0,help='Number of loop to play (infinite loop by default)')
     parser.add_argument('-s','--show',action='count',default=0,help='Show frames')
     parser.add_argument('-b','--box',action='count',default=0,help='Use boxes instead of dots when showing frames')
     parser.add_argument('filepath',nargs='+',help='Raw image (rgb24) filepath')
@@ -462,7 +466,7 @@ def main():
 
             # Also compute ascii frame if needed
             if args.show > 0:
-                asciiframes.append(frame2ascii(frame))
+                asciiframes.append(frame2ascii(frame,args.width,args.height))
 
     # First frame will use sequence 0
     sequence = 0

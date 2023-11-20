@@ -13,9 +13,7 @@ The file size of the raw rgb24 image should be `width x height x 3` bytes. As an
 ### usage
 
     ./artnetsend.py -h
-    usage: arnetplay.py [-h] [-v] [-d DESTINATION] [-p PORT] [-f FPS] [-r REPEAT]
-                    [-l LOOP] [-s] [-b]
-                    filepath [filepath ...]
+    usage: arnetplay.py [-h] [-v] [-W WIDTH] [-H HEIGHT] [-d DESTINATION] [-p PORT] [-f FPS] [-r REPEAT] [-L LOOP] [-s] [-b] filepath [filepath ...]
 
     Send raw images using Artnet protocol
 
@@ -25,33 +23,35 @@ The file size of the raw rgb24 image should be `width x height x 3` bytes. As an
     options:
     -h, --help            show this help message and exit
     -v, --verbose         Verbose level
+    -W WIDTH, --width WIDTH
+                            Frame width in pixels
+    -H HEIGHT, --height HEIGHT
+                            Frame height in pixels
     -d DESTINATION, --destination DESTINATION
                             IP destination address (default 127.0.0.1)
     -p PORT, --port PORT  UDP destination port (default 6454)
     -f FPS, --fps FPS     Frame Per Second (default 5)
     -r REPEAT, --repeat REPEAT
                             UDP packet repeat (default none)
-    -l LOOP, --loop LOOP  Number of loop to play (infinite loop by default)
+    -L LOOP, --loop LOOP  Number of loop to play (infinite loop by default)
     -s, --show            Show frames
     -b, --box             Use boxes instead of dots when showing frames
 
-    Made with ♥ in Python
-
 ### show with dots
 
-    ./artnetsend.py -s -l 1 ./raw16x16/goomba_1.data
+    ./artnetsend.py -s -L 1 ./raw16x16/goomba_1.data
 
 ![artnetsend.py run with goomba raw images show with dots](./pics/goomba-dot.png)
 
 ### show with squares
 
-    ./artnetsend.py -b -s -l 1 ./raw16x16/goomba_1.data
+    ./artnetsend.py -b -s -L 1 ./raw16x16/goomba_1.data
 
 ![artnetsend.py run with goomba raw images show with squares](./pics/goomba-square.png)
 
 ### example
 
-    ./artnetsend.py -v -s -l 1 ./raw16x16/mario-bonus*
+    ./artnetsend.py -v -s -L 1 ./raw16x16/mario-bonus*
 
 ![artnetsend.py run with mario-bonus raw images](./pics/mario-bonus-run.png)
 
@@ -71,8 +71,47 @@ The file size of the raw rgb24 image should be `width x height x 3` bytes. As an
 
 I've noticed that raw images file extension must be `.data` to be open in GIMP 2.10 with the appropriate loader.
 
-### missing features (future work)
+## artnetsend.py
 
-- images that are not square won't be correctly shown with the `--show` option. However they will be correctly handled in the artnet protocol as it doesn't care.
-- network relay isn't implemented yet but I have the idea in my mind (receiving raw rgb24 ffmpeg output on UDP and forwarding with artnet protocol)
+`artnetrelay.py` is a tool that receives raw rgb24 frames (eg. rawvideo from ffmpeg) and forward them raw using [Artnet protocol](https://en.wikipedia.org/wiki/Art-Net) to compatible endpoints such as [WLED](https://kno.wled.ge/).
+
+## usage
+
+    ./artnetrelay.py -h
+    usage: arnetrelay.py [-h] [-v] [-W WIDTH] [-H HEIGHT] [-d DESTINATION] [-p PORT] [-l LISTEN_PORT] [-r REPEAT] [-L LOOP] [-s] [-b]
+
+    Forward raw frames (eg. ffmpeg rawvideo/UDP) using Artnet protocol
+
+    options:
+    -h, --help            show this help message and exit
+    -v, --verbose         Verbose level
+    -W WIDTH, --width WIDTH
+                            Frame width in pixels
+    -H HEIGHT, --height HEIGHT
+                            Frame height in pixels
+    -d DESTINATION, --destination DESTINATION
+                            IP destination address (default 127.0.0.1)
+    -p PORT, --port PORT  UDP destination port (default 6454)
+    -l LISTEN_PORT, --listen-port LISTEN_PORT
+                            UDP listen port (default 1234)
+    -r REPEAT, --repeat REPEAT
+                            UDP packet repeat (default none)
+    -L LOOP, --loop LOOP  Number of loop to play (infinite loop by default)
+    -s, --show            Show frames
+    -b, --box             Use boxes instead of dots when showing frames
+
+    Made with ♥ in Python
+
+### example
+
+First start the artnetrelay:
+
+    ./artnetrelay.py -W 32 -H 32  -d wled-WLED.local
+
+You can then for example send video from ffmpeg:
+
+    ffmpeg -re -i somevideo.mp4 -an -vf crop=32:32 -vf scale=32:-1 -f rawvideo -pix_fmt rgb24 -s 32x32 udp://127.0.0.1:1234
+
+## missing features (future work)
+
 - multiple unicast destinations isn't supported yet but it will be easy to add thanks to argparse usage
