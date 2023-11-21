@@ -5,15 +5,10 @@ Artnet stuffs (ws2812, led matrix, dmx512)
 
 `artnetsend.py` is a tool that sends raw rgb24 images using [Artnet protocol](https://en.wikipedia.org/wiki/Art-Net) to compatible endpoints such as [WLED](https://kno.wled.ge/). I've worked on this tool because I didn't find any command line tool that is compatible with [WLED](https://kno.wled.ge/). If you too find this tool useful that's cool.
 
-### raw rgb24 image
-
-A raw rgb24 image is a sequence of R,G,B triplets of byte for every pixels in the image. The pixels come in order from the top left corner pixel to the bottom right corner pixel, line by line.
-The file size of the raw rgb24 image should be `width x height x 3` bytes. As an example, a 16x16 raw rgb24 image is 768 bytes.
-
 ### usage
 
     ./artnetsend.py -h
-    usage: arnetplay.py [-h] [-v] [-W WIDTH] [-H HEIGHT] [-d DESTINATION] [-p PORT] [-f FPS] [-r REPEAT] [-L LOOP] [-s] [-b] filepath [filepath ...]
+    usage: arnetplay.py [-h] [-v] [-W WIDTH] [-H HEIGHT] [-d DESTINATION [DESTINATION ...]] [-p PORT] [-f FPS] [-r REPEAT] [-L LOOP] [-s] [-b] filepath [filepath ...]
 
     Send raw images using Artnet protocol
 
@@ -27,8 +22,8 @@ The file size of the raw rgb24 image should be `width x height x 3` bytes. As an
                             Frame width in pixels
     -H HEIGHT, --height HEIGHT
                             Frame height in pixels
-    -d DESTINATION, --destination DESTINATION
-                            IP destination address (default 127.0.0.1)
+    -d DESTINATION [DESTINATION ...], --destination DESTINATION [DESTINATION ...]
+                            IP destination address (default 127.0.0.1). Multiple unicast adresses can be provided.
     -p PORT, --port PORT  UDP destination port (default 6454)
     -f FPS, --fps FPS     Frame Per Second (default 5)
     -r REPEAT, --repeat REPEAT
@@ -80,7 +75,7 @@ I've noticed that raw images file extension must be `.data` to be open in GIMP 2
 ## usage
 
     ./artnetrelay.py -h
-    usage: arnetrelay.py [-h] [-v] [-W WIDTH] [-H HEIGHT] [-d DESTINATION] [-p PORT] [-l LISTEN_PORT] [-r REPEAT] [-f FRAMES] [-s] [-b]
+    usage: arnetrelay.py [-h] [-v] [-W WIDTH] [-H HEIGHT] [-d DESTINATION [DESTINATION ...]] [-p PORT] [-l LISTEN_PORT] [-r REPEAT] [-F FRAMES] [-s] [-b]
 
     Forward raw frames (eg. ffmpeg rawvideo/UDP) using Artnet protocol
 
@@ -91,8 +86,8 @@ I've noticed that raw images file extension must be `.data` to be open in GIMP 2
                             Frame width in pixels
     -H HEIGHT, --height HEIGHT
                             Frame height in pixels
-    -d DESTINATION, --destination DESTINATION
-                            IP destination address (default 127.0.0.1)
+    -d DESTINATION [DESTINATION ...], --destination DESTINATION [DESTINATION ...]
+                            IP destination address (default 127.0.0.1). Multiple unicast adresses can be provided.
     -p PORT, --port PORT  UDP destination port (default 6454)
     -l LISTEN_PORT, --listen-port LISTEN_PORT
                             UDP listen port (default 1234)
@@ -115,6 +110,11 @@ You can then for example send video from ffmpeg:
 
     ffmpeg -re -i somevideo.mp4 -an -vf crop=32:32 -vf scale=32:-1 -f rawvideo -pix_fmt rgb24 -s 32x32 udp://127.0.0.1:1234
 
-## missing features (future work)
+### important note
 
-- multiple unicast destinations isn't supported yet but it will be easy to add thanks to argparse usage
+Artnetrelay receives all the udp payloads for the current frame before processing it. UDP is not reliable so it should only work on localhost. In the case the video must be transmitted over the network you should move the artnetrelay node so that artnet protocol is used over the network or you may use an ffmpeg chaining like this `ffmpeg -> RTP or MPEGTS over network -> ffmpeg -> UDP raw` to guaranty the data ordering.
+
+## raw rgb24 image
+
+A raw rgb24 image is a sequence of R,G,B triplets of byte for every pixels in the image. The pixels come in order from the top left corner pixel to the bottom right corner pixel, line by line.
+The file size of the raw rgb24 image should be `width x height x 3` bytes. As an example, a 16x16 raw rgb24 image is 768 bytes.

@@ -452,7 +452,7 @@ def main():
     parser.add_argument('-v','--verbose',action='count',default=0,help='Verbose level (on stderr)')
     parser.add_argument('-W','--width',type=int,default=16,help='Frame width in pixels')
     parser.add_argument('-H','--height',type=int,default=16,help='Frame height in pixels')
-    parser.add_argument('-d','--destination',default='127.0.0.1',help='IP destination address (default 127.0.0.1)')
+    parser.add_argument('-d','--destination',default=['127.0.0.1'],action='extend',nargs='+',help='IP destination address (default 127.0.0.1). Multiple unicast adresses can be provided.')
     parser.add_argument('-p','--port',type=int,default=6454,help='UDP destination port (default 6454)')
     parser.add_argument('-f','--fps',type=int,default=5,help='Frame Per Second (default 5)')
     parser.add_argument('-r','--repeat',type=int,default=0,help='UDP packet repeat (default none)')
@@ -471,8 +471,10 @@ def main():
     # Open UDP socket
     udpclient = socket.socket(socket.AF_INET, socket.SOCK_DGRAM)      # UDP
 
-    if len(args.destination.split('.')) == 4 and int(args.destination.split('.')[3]) == 255:
-        udpclient.setsockopt(socket.SOL_SOCKET, socket.SO_BROADCAST, 1)   # Allow multicast
+    for _,destination in enumerate(args.destination):
+        if len(destination.split('.')) == 4 and int(destination.split('.')[3]) == 255:
+            udpclient.setsockopt(socket.SOL_SOCKET, socket.SO_BROADCAST, 1)   # Allow multicast
+            break
 
     # load frames from files
     frames = []
@@ -556,15 +558,16 @@ def main():
                 verbose_3('-----END PAYLOAD-----')
                 verbose_2('+ Sending UDP packet with %d bytes' % len(data))
 
-                # Send the artnet data in UDP packet
-                udpclient.sendto(data,(args.destination,args.port))
+                for _,destination in enumerate(args.destination):
+                    # Send the artnet data in UDP packet to destination
+                    udpclient.sendto(data,(destination,args.port))
 
-                # When requested resend the UDP packet
-                # May be usefull in case of bad network quality
-                for repeat in range(args.repeat):
-                    verbose_2('+ Sending again UDP packet (repeat %d)' % repeat)
-                    udpclient.sendto(data,(args.destination,args.port))
-
+                    # When requested resend the UDP packet
+                    # May be usefull in case of bad network quality
+                    for repeat in range(args.repeat):
+                        verbose_2('+ Sending again UDP packet (repeat %d)' % repeat)
+                        udpclient.sendto(data,(destination,args.port))
+                
                 # Increment universe index for the remaining bytes to be send in other
                 # Artnet packet with the same sequence index
                 universe = (universe + 1) % 65536
