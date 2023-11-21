@@ -52,22 +52,6 @@ Artnet stuffs (ws2812, led matrix, dmx512)
 
 ![artnetsend.py run with mario-bonus raw images](./pics/mario-bonus-run.png)
 
-### converting PNG to raw rgb24 16x16 images
-
-    for png in *.png;do convert -size 16x16 $png -depth 8 -colorspace RGB ../raw16x16/${png%.png}.rgb;done
-
-### converting GIF to raw rgb24 16x16 images
-
-    ffmpeg -i anim.gif -pix_fmt rgb24 -s 16x16 ./out/anim_%d.raw
-
-### converting GIF with transparent background to raw rgb24 16x16 images with dark green (003b10) background
-
-    ffmpeg -f lavfi -i color=003b10 -i anim.gif -filter_complex "[0][1]scale2ref[bg][gif];[bg]setsar=1[bg];[bg][gif]overlay=shortest=1" -pix_fmt rgb24 -s 16x16 ./out/anim_%d.raw
-
-### editing raw images with GIMP 2.10
-
-I've noticed that raw images file extension must be `.data` to be open in GIMP 2.10 with the appropriate loader.
-
 ## artnetrelay.py
 
 `artnetrelay.py` is a tool that receives raw rgb24 frames (eg. rawvideo from ffmpeg) and forward them raw using [Artnet protocol](https://en.wikipedia.org/wiki/Art-Net) to compatible endpoints such as [WLED](https://kno.wled.ge/).
@@ -118,3 +102,19 @@ Artnetrelay receives all the udp payloads for the current frame before processin
 
 A raw rgb24 image is a sequence of R,G,B triplets of byte for every pixels in the image. The pixels come in order from the top left corner pixel to the bottom right corner pixel, line by line.
 The file size of the raw rgb24 image should be `width x height x 3` bytes. As an example, a 16x16 raw rgb24 image is 768 bytes.
+
+### converting PNG to raw rgb24 16x16 images
+
+    for png in *.png;do convert -size 16x16 $png -depth 8 -colorspace RGB ../raw16x16/${png%.png}.rgb;done
+
+### converting GIF to raw rgb24 16x16 images
+
+    ffmpeg -i anim.gif -pix_fmt rgb24 -s 16x16 ./out/anim_%d.raw
+
+### converting GIF with transparent background to raw rgb24 16x16 images with dark green (003b10) background
+
+    ffmpeg -f lavfi -i color=003b10 -i anim.gif -filter_complex "[0][1]scale2ref[bg][gif];[bg]setsar=1[bg];[bg][gif]overlay=shortest=1" -pix_fmt rgb24 -s 16x16 ./out/anim_%d.raw
+
+### editing raw images with GIMP 2.10
+
+I've noticed that raw images file extension must be `.data` to be open in GIMP 2.10 with the appropriate loader.
